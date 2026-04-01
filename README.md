@@ -34,4 +34,4 @@ https://raw.githubusercontent.com/Ground-Zerro/Geo-Aggregator/main/geodat/geoip_
 
 ---
 
-*Автоматически сгенерировано GitHub Actions · 1627 категорий · 2026-04-01 05:23 UTC*
+*Автоматически сгенерировано GitHub Actions · 1617 категорий · 2026-04-01 09:43 UTC*
