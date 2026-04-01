@@ -94,6 +94,10 @@ func parseGeoSiteDat(data []byte, out tagSet) {
 		if code == "" || isCNTag(code) {
 			return
 		}
+		code = normalizeTag(code)
+		if isExcludedTag(code) {
+			return
+		}
 		pbIterFields(raw, func(sfn, swt int, sb []byte, _ uint64) {
 			if sfn != 2 || swt != 2 {
 				return
@@ -136,6 +140,10 @@ func parseGeoIPDat(data []byte, out tagSet) {
 			}
 		})
 		if code == "" || isCNTag(code) {
+			return
+		}
+		code = normalizeTag(code)
+		if isExcludedTag(code) {
 			return
 		}
 		pbIterFields(raw, func(sfn, swt int, sb []byte, _ uint64) {

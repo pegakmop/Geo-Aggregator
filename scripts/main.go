@@ -31,7 +31,19 @@ var (
 	strictLabel  = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`)
 	prefixRE     = regexp.MustCompile(`^(?:full:|domain:|regexp:|keyword:|ext:\S+:)`)
 	regexChars   = regexp.MustCompile(`[\\^$+*?{}\[\]()|]`)
-	httpClient   = &http.Client{Timeout: 120 * time.Second}
+	cnSuffixRE   = regexp.MustCompile(`(?i)-!cn$`)
+	excludedTags = map[string]struct{}{
+		"category-ads-all":       {},
+		"ru-blocked":             {},
+		"ru-blocked-all":         {},
+		"ru-blocked-community":   {},
+		"category-ads-ir":        {},
+		"category-ads":           {},
+		"adblock":                {},
+		"adblockplus":            {},
+		"ad":                     {},
+	}
+	httpClient = &http.Client{Timeout: 300 * time.Second}
 )
 
 type strSet map[string]struct{}
@@ -67,6 +79,16 @@ func (t tagSet) sortedKeys() []string {
 
 func isCNTag(tag string) bool {
 	return cnPattern.MatchString(tag)
+}
+
+func isExcludedTag(tag string) bool {
+	_, ok := excludedTags[tag]
+	return ok
+}
+
+func normalizeTag(tag string) string {
+	tag = cnSuffixRE.ReplaceAllString(tag, "")
+	return tag
 }
 
 func isCNAnnotation(annotation string) bool {
@@ -178,7 +200,8 @@ func parseDLC(data []byte, out tagSet) {
 	skipped := 0
 	for _, entry := range dlc.Lists {
 		tag := strings.ToLower(fmt.Sprint(entry.Name))
-		if isCNTag(tag) {
+		tag = normalizeTag(tag)
+		if isCNTag(tag) || isExcludedTag(tag) {
 			skipped++
 			continue
 		}
@@ -192,6 +215,10 @@ func parseDLC(data []byte, out tagSet) {
 }
 
 func parseLines(data []byte, tag string, out tagSet) {
+	tag = normalizeTag(tag)
+	if isExcludedTag(tag) {
+		return
+	}
 	for _, line := range strings.Split(string(data), "\n") {
 		if e := processEntry(line); e != "" {
 			out.add(tag, e)
@@ -232,8 +259,8 @@ func main() {
 	fmt.Println("=== itdoginfo/allow-domains ===")
 	itdogBase := "https://raw.githubusercontent.com/itdoginfo/allow-domains/main/Russia"
 	for _, pair := range [][2]string{
-		{itdogBase + "/inside-raw.lst", "russia-inside"},
-		{itdogBase + "/outside-raw.lst", "russia-outside"},
+		{itdogBase + "/inside-raw.lst", "itDog-russia-inside"},
+		{itdogBase + "/outside-raw.lst", "itDog-russia-outside"},
 	} {
 		if data, err := fetch(pair[0]); err != nil {
 			fmt.Println(" ", err)
@@ -283,7 +310,7 @@ func main() {
 	fmt.Println("=== Запись sourceN/ ===")
 	validTags := make([]string, 0)
 	for _, tag := range all.sortedKeys() {
-		if isCNTag(tag) {
+		if isCNTag(tag) || isExcludedTag(tag) {
 			continue
 		}
 		if len(all[tag]) == 0 {
